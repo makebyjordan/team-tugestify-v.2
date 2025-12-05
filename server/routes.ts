@@ -134,4 +134,103 @@ router.post('/chat', async (req, res) => {
     res.json(message);
 });
 
+// Proposals
+router.get('/proposals', async (req, res) => {
+    const proposals = await prisma.proposal.findMany({
+        include: { responses: true },
+        orderBy: { createdAt: 'desc' }
+    });
+    res.json(proposals);
+});
+
+router.post('/proposals', async (req, res) => {
+    const proposal = await prisma.proposal.create({
+        data: req.body,
+        include: { responses: true }
+    });
+    res.json(proposal);
+});
+
+router.delete('/proposals/:id', async (req, res) => {
+    await prisma.proposal.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+});
+
+// Proposal Responses
+router.post('/proposals/:proposalId/responses', async (req, res) => {
+    const { proposalId } = req.params;
+    const { userId, userName, userAvatar, response } = req.body;
+
+    // Check if user already responded, update if exists
+    const existing = await prisma.proposalResponse.findFirst({
+        where: { proposalId, userId }
+    });
+
+    let result;
+    if (existing) {
+        result = await prisma.proposalResponse.update({
+            where: { id: existing.id },
+            data: { response }
+        });
+    } else {
+        result = await prisma.proposalResponse.create({
+            data: { proposalId, userId, userName, userAvatar, response }
+        });
+    }
+    res.json(result);
+});
+
+router.delete('/proposals/:proposalId/responses/:responseId', async (req, res) => {
+    await prisma.proposalResponse.delete({ where: { id: req.params.responseId } });
+    res.json({ success: true });
+});
+
+// Notes & Checks
+router.get('/notes-checks', async (req, res) => {
+    const notes = await prisma.noteCheck.findMany({ orderBy: { createdAt: 'desc' } });
+    res.json(notes);
+});
+
+router.post('/notes-checks', async (req, res) => {
+    const note = await prisma.noteCheck.create({ data: req.body });
+    res.json(note);
+});
+
+router.put('/notes-checks/:id', async (req, res) => {
+    const note = await prisma.noteCheck.update({
+        where: { id: req.params.id },
+        data: req.body
+    });
+    res.json(note);
+});
+
+router.delete('/notes-checks/:id', async (req, res) => {
+    await prisma.noteCheck.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+});
+
+// Agenda Items
+router.get('/agenda-items', async (req, res) => {
+    const items = await prisma.agendaItem.findMany({ orderBy: { createdAt: 'desc' } });
+    res.json(items);
+});
+
+router.post('/agenda-items', async (req, res) => {
+    const item = await prisma.agendaItem.create({ data: req.body });
+    res.json(item);
+});
+
+router.put('/agenda-items/:id', async (req, res) => {
+    const item = await prisma.agendaItem.update({
+        where: { id: req.params.id },
+        data: req.body
+    });
+    res.json(item);
+});
+
+router.delete('/agenda-items/:id', async (req, res) => {
+    await prisma.agendaItem.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+});
+
 export default router;

@@ -16,7 +16,8 @@ import { NotasChecks } from './pages/NotasChecks';
 import { NoCheckComun } from './pages/NoCheckComun';
 import { Agendarme } from './pages/Agendarme';
 import { Calendario } from './pages/Calendario';
-import { ThemeMode, Asset, BrandItem, TeamMember, UserState, ActivityLog, Project, ChatMessage, ChatContext, NoteCheck, AgendaItem } from './types';
+import { Proposals } from './pages/Proposals';
+import { ThemeMode, Asset, BrandItem, TeamMember, UserState, ActivityLog, Project, ChatMessage, ChatContext, NoteCheck, AgendaItem, Proposal, ProposalResponseType } from './types';
 
 import { api } from './services/api';
 
@@ -37,29 +38,29 @@ const App: React.FC = () => {
   // Dynamic Sections (Created from Projects)
   const [customSections, setCustomSections] = useState<Project[]>([]);
 
-  // Notas & Checks State (persisted in localStorage)
-  const [notesChecks, setNotesChecks] = useState<NoteCheck[]>(() => {
-    const saved = localStorage.getItem('notesChecks');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Notas & Checks State (from database)
+  const [notesChecks, setNotesChecks] = useState<NoteCheck[]>([]);
 
-  // Agenda Items State (persisted in localStorage)
-  const [agendaItems, setAgendaItems] = useState<AgendaItem[]>(() => {
-    const saved = localStorage.getItem('agendaItems');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Agenda Items State (from database)
+  const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
+
+  // Proposals State
+  const [proposals, setProposals] = useState<Proposal[]>([]);
 
   // --- Effects ---
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fetchedAssets, fetchedBrandItems, fetchedTeam, fetchedLogs, fetchedProjects, fetchedMessages] = await Promise.all([
+        const [fetchedAssets, fetchedBrandItems, fetchedTeam, fetchedLogs, fetchedProjects, fetchedMessages, fetchedProposals, fetchedNotesChecks, fetchedAgendaItems] = await Promise.all([
           api.getAssets(),
           api.getBrandItems(),
           api.getTeam(),
           api.getLogs(),
           api.getProjects(),
-          api.getMessages()
+          api.getMessages(),
+          api.getProposals(),
+          api.getNotesChecks(),
+          api.getAgendaItems()
         ]);
         setAssets(fetchedAssets);
         setBrandItems(fetchedBrandItems);
@@ -67,6 +68,9 @@ const App: React.FC = () => {
         setActivityLogs(fetchedLogs);
         setProjects(fetchedProjects);
         setChatMessages(fetchedMessages);
+        setProposals(fetchedProposals);
+        setNotesChecks(fetchedNotesChecks);
+        setAgendaItems(fetchedAgendaItems);
         // Initialize custom sections from projects if needed, or fetch separately
       } catch (error) {
         console.error("Failed to fetch data", error);
@@ -278,84 +282,95 @@ const App: React.FC = () => {
   };
 
   // --- Notas & Checks Handlers ---
-  const saveNotesToStorage = (notes: NoteCheck[]) => {
-    localStorage.setItem('notesChecks', JSON.stringify(notes));
-  };
-
-  const handleAddNote = (note: NoteCheck) => {
-    const updated = [note, ...notesChecks];
-    setNotesChecks(updated);
-    saveNotesToStorage(updated);
+  const handleAddNote = async (note: NoteCheck) => {
+    const created = await api.createNoteCheck(note);
+    setNotesChecks([created, ...notesChecks]);
     addLog(`Creó ${note.type === 'note' ? 'nota' : 'checklist'}: ${note.title}`);
   };
 
-  const handleUpdateNote = (note: NoteCheck) => {
-    const updated = notesChecks.map(n => n.id === note.id ? note : n);
-    setNotesChecks(updated);
-    saveNotesToStorage(updated);
+  const handleUpdateNote = async (note: NoteCheck) => {
+    const updated = await api.updateNoteCheck(note);
+    setNotesChecks(notesChecks.map(n => n.id === updated.id ? updated : n));
   };
 
-  const handleDeleteNote = (id: string) => {
+  const handleDeleteNote = async (id: string) => {
     const note = notesChecks.find(n => n.id === id);
-    const updated = notesChecks.filter(n => n.id !== id);
-    setNotesChecks(updated);
-    saveNotesToStorage(updated);
+    await api.deleteNoteCheck(id);
+    setNotesChecks(notesChecks.filter(n => n.id !== id));
     if (note) addLog(`Eliminó ${note.type === 'note' ? 'nota' : 'checklist'}: ${note.title}`);
   };
 
-  const handlePublishNote = (id: string) => {
-    const updated = notesChecks.map(n => {
-      if (n.id === id) {
-        const newPublished = !n.isPublished;
-        if (newPublished) addLog(`Publicó ${n.type === 'note' ? 'nota' : 'checklist'}: ${n.title}`);
-        return { ...n, isPublished: newPublished };
-      }
-      return n;
-    });
-    setNotesChecks(updated);
-    saveNotesToStorage(updated);
+  const handlePublishNote = async (id: string) => {
+    const note = notesChecks.find(n => n.id === id);
+    if (!note) return;
+    const newPublished = !note.isPublished;
+    const updated = await api.updateNoteCheck({ ...note, isPublished: newPublished });
+    setNotesChecks(notesChecks.map(n => n.id === id ? updated : n));
+    if (newPublished) addLog(`Publicó ${note.type === 'note' ? 'nota' : 'checklist'}: ${note.title}`);
   };
 
-  const handleTogglePublicCheckItem = (noteId: string, itemId: string) => {
-    const updated = notesChecks.map(n => {
-      if (n.id === noteId && n.items) {
-        return {
-          ...n,
-          items: n.items.map(item =>
-            item.id === itemId ? { ...item, completed: !item.completed } : item
-          )
-        };
-      }
-      return n;
-    });
-    setNotesChecks(updated);
-    saveNotesToStorage(updated);
+  const handleTogglePublicCheckItem = async (noteId: string, itemId: string) => {
+    const note = notesChecks.find(n => n.id === noteId);
+    if (!note || !note.items) return;
+    const updatedItems = note.items.map(item =>
+      item.id === itemId ? { ...item, completed: !item.completed } : item
+    );
+    const updated = await api.updateNoteCheck({ ...note, items: updatedItems });
+    setNotesChecks(notesChecks.map(n => n.id === noteId ? updated : n));
   };
 
   // --- Agenda Handlers ---
-  const saveAgendaToStorage = (items: AgendaItem[]) => {
-    localStorage.setItem('agendaItems', JSON.stringify(items));
-  };
-
-  const handleAddAgendaItem = (item: AgendaItem) => {
-    const updated = [item, ...agendaItems];
-    setAgendaItems(updated);
-    saveAgendaToStorage(updated);
+  const handleAddAgendaItem = async (item: AgendaItem) => {
+    const created = await api.createAgendaItem(item);
+    setAgendaItems([created, ...agendaItems]);
     addLog(`Agendó: ${item.title} para ${item.date}`);
   };
 
-  const handleUpdateAgendaItem = (item: AgendaItem) => {
-    const updated = agendaItems.map(i => i.id === item.id ? item : i);
-    setAgendaItems(updated);
-    saveAgendaToStorage(updated);
+  const handleUpdateAgendaItem = async (item: AgendaItem) => {
+    const updated = await api.updateAgendaItem(item);
+    setAgendaItems(agendaItems.map(i => i.id === updated.id ? updated : i));
   };
 
-  const handleDeleteAgendaItem = (id: string) => {
+  const handleDeleteAgendaItem = async (id: string) => {
     const item = agendaItems.find(i => i.id === id);
-    const updated = agendaItems.filter(i => i.id !== id);
-    setAgendaItems(updated);
-    saveAgendaToStorage(updated);
+    await api.deleteAgendaItem(id);
+    setAgendaItems(agendaItems.filter(i => i.id !== id));
     if (item) addLog(`Eliminó evento: ${item.title}`);
+  };
+
+  // --- Proposals Handlers ---
+  const handleAddProposal = async (proposal: Omit<Proposal, 'id' | 'responses'>) => {
+    const created = await api.createProposal(proposal);
+    setProposals([created, ...proposals]);
+    addLog(`Propuso reunión: ${created.title}`);
+  };
+
+  const handleDeleteProposal = async (id: string) => {
+    const proposal = proposals.find(p => p.id === id);
+    await api.deleteProposal(id);
+    setProposals(proposals.filter(p => p.id !== id));
+    if (proposal) addLog(`Eliminó propuesta: ${proposal.title}`);
+  };
+
+  const handleRespondToProposal = async (proposalId: string, response: ProposalResponseType) => {
+    if (!userState.currentUser) return;
+    const responseData = {
+      userId: userState.currentUser.id,
+      userName: userState.currentUser.name,
+      userAvatar: userState.currentUser.avatar,
+      response
+    };
+    const created = await api.respondToProposal(proposalId, responseData);
+    setProposals(proposals.map(p => {
+      if (p.id !== proposalId) return p;
+      const existingIndex = p.responses.findIndex(r => r.userId === userState.currentUser!.id);
+      if (existingIndex >= 0) {
+        const newResponses = [...p.responses];
+        newResponses[existingIndex] = { ...newResponses[existingIndex], response };
+        return { ...p, responses: newResponses };
+      }
+      return { ...p, responses: [...p.responses, { ...created, proposalId }] };
+    }));
   };
 
   // --- Render ---
@@ -438,7 +453,17 @@ const App: React.FC = () => {
           />
         );
       case 'calendario':
-        return <Calendario items={agendaItems} />;
+        return <Calendario items={agendaItems} proposals={proposals} />;
+      case 'proposals':
+        return (
+          <Proposals
+            proposals={proposals}
+            currentUser={userState.currentUser!}
+            onAdd={handleAddProposal}
+            onDelete={handleDeleteProposal}
+            onRespond={handleRespondToProposal}
+          />
+        );
       case 'brand':
         return <BrandKit items={brandItems} onAddItem={handleAddBrandItem} />;
       case 'ai':

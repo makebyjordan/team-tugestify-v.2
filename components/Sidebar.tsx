@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Image, Type, Users, Sparkles, LogOut, ListTodo, FolderKanban, ChevronRight, Archive, MessageCircle, StickyNote, Share2, CalendarDays, Calendar } from 'lucide-react';
+import { LayoutDashboard, Image, Type, Users, Sparkles, LogOut, ListTodo, FolderKanban, ChevronRight, Archive, MessageCircle, StickyNote, Share2, CalendarDays, Calendar, CalendarClock } from 'lucide-react';
 import { UserState, Project } from '../types';
 
 interface SidebarProps {
@@ -21,6 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userS
     { id: 'nocheck-comun', label: 'NoCheck Común', icon: Share2 },
     { id: 'agendarme', label: 'Agendarme', icon: CalendarDays },
     { id: 'calendario', label: 'Calendario', icon: Calendar },
+    { id: 'proposals', label: 'Proposals', icon: CalendarClock },
     { id: 'brand', label: 'Kit de Marca', icon: Type },
     { id: 'ai', label: 'Asistente IA', icon: Sparkles },
     { id: 'team', label: 'Equipo', icon: Users },

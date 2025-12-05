@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { AgendaItem, AgendaType } from '../types';
-import { ChevronLeft, ChevronRight, Calendar, Clock, Phone, CheckCircle, Users, Lightbulb, Video, HelpCircle } from 'lucide-react';
+import { AgendaItem, AgendaType, Proposal, ProposalCategory } from '../types';
+import { ChevronLeft, ChevronRight, Calendar, Clock, Phone, CheckCircle, Users, Lightbulb, Video, HelpCircle, CalendarClock, AlertTriangle, Palette, Code, TrendingUp, UserCheck, User } from 'lucide-react';
 
 interface CalendarioProps {
   items: AgendaItem[];
+  proposals?: Proposal[];
 }
 
 const TYPE_CONFIG: Record<AgendaType, { icon: React.ElementType; color: string; bgColor: string }> = {
@@ -15,10 +16,21 @@ const TYPE_CONFIG: Record<AgendaType, { icon: React.ElementType; color: string; 
   otro: { icon: HelpCircle, color: 'text-slate-600', bgColor: 'bg-slate-100 dark:bg-slate-700' },
 };
 
+const PROPOSAL_CATEGORY_CONFIG: Record<ProposalCategory, { icon: React.ElementType; color: string; bgColor: string }> = {
+  importante: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100 dark:bg-red-900/30' },
+  'diseño': { icon: Palette, color: 'text-pink-600', bgColor: 'bg-pink-100 dark:bg-pink-900/30' },
+  desarrollo: { icon: Code, color: 'text-blue-600', bgColor: 'bg-blue-100 dark:bg-blue-900/30' },
+  ventas: { icon: TrendingUp, color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-900/30' },
+  cliente: { icon: UserCheck, color: 'text-amber-600', bgColor: 'bg-amber-100 dark:bg-amber-900/30' },
+  equipo: { icon: Users, color: 'text-violet-600', bgColor: 'bg-violet-100 dark:bg-violet-900/30' },
+  alguien: { icon: User, color: 'text-cyan-600', bgColor: 'bg-cyan-100 dark:bg-cyan-900/30' },
+  otros: { icon: HelpCircle, color: 'text-slate-600', bgColor: 'bg-slate-100 dark:bg-slate-700' },
+};
+
 const DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-export const Calendario: React.FC<CalendarioProps> = ({ items }) => {
+export const Calendario: React.FC<CalendarioProps> = ({ items, proposals = [] }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -37,6 +49,11 @@ export const Calendario: React.FC<CalendarioProps> = ({ items }) => {
   // Get items for a specific date
   const getItemsForDate = (dateStr: string) => {
     return items.filter(item => item.date === dateStr);
+  };
+
+  // Get proposals for a specific date
+  const getProposalsForDate = (dateStr: string) => {
+    return proposals.filter(p => p.date === dateStr);
   };
 
   // Generate calendar days
@@ -73,6 +90,7 @@ export const Calendario: React.FC<CalendarioProps> = ({ items }) => {
   };
 
   const selectedItems = selectedDate ? getItemsForDate(selectedDate) : [];
+  const selectedProposals = selectedDate ? getProposalsForDate(selectedDate) : [];
 
   return (
     <div className="p-8 h-full overflow-y-auto">
@@ -134,7 +152,8 @@ export const Calendario: React.FC<CalendarioProps> = ({ items }) => {
 
               const dateStr = formatDateStr(day);
               const dayItems = getItemsForDate(dateStr);
-              const hasItems = dayItems.length > 0;
+              const dayProposals = getProposalsForDate(dateStr);
+              const hasItems = dayItems.length > 0 || dayProposals.length > 0;
               const isSelected = selectedDate === dateStr;
               const isTodayDate = isToday(day);
 
@@ -154,14 +173,20 @@ export const Calendario: React.FC<CalendarioProps> = ({ items }) => {
                   
                   {hasItems && (
                     <div className="flex gap-0.5 mt-1 flex-wrap justify-center">
-                      {dayItems.slice(0, 3).map((item, i) => (
+                      {dayItems.slice(0, 2).map((item, i) => (
                         <div 
-                          key={i} 
+                          key={`item-${i}`} 
                           className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : TYPE_CONFIG[item.type].color.replace('text-', 'bg-')}`}
                         />
                       ))}
-                      {dayItems.length > 3 && (
-                        <span className={`text-[8px] ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>+{dayItems.length - 3}</span>
+                      {dayProposals.slice(0, 2).map((_, i) => (
+                        <div 
+                          key={`proposal-${i}`} 
+                          className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-fuchsia-500'}`}
+                        />
+                      ))}
+                      {(dayItems.length + dayProposals.length) > 4 && (
+                        <span className={`text-[8px] ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>+{(dayItems.length + dayProposals.length) - 4}</span>
                       )}
                     </div>
                   )}
@@ -185,13 +210,59 @@ export const Calendario: React.FC<CalendarioProps> = ({ items }) => {
               <Calendar size={40} className="mb-3 opacity-50" />
               <p className="text-sm text-center">Haz clic en un día para ver los eventos</p>
             </div>
-          ) : selectedItems.length === 0 ? (
+          ) : (selectedItems.length === 0 && selectedProposals.length === 0) ? (
             <div className="flex flex-col items-center justify-center py-12 text-slate-400">
               <Calendar size={40} className="mb-3 opacity-50" />
               <p className="text-sm">Sin eventos este día</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {/* Proposals */}
+              {selectedProposals
+                .sort((a, b) => a.time.localeCompare(b.time))
+                .map(proposal => {
+                  const config = PROPOSAL_CATEGORY_CONFIG[proposal.category] || PROPOSAL_CATEGORY_CONFIG.otros;
+                  const Icon = config.icon;
+                  return (
+                    <div 
+                      key={proposal.id} 
+                      className="p-4 rounded-xl bg-fuchsia-100 dark:bg-fuchsia-900/30 border-2 border-fuchsia-300 dark:border-fuchsia-700"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-fuchsia-500 rounded-lg text-white">
+                          <CalendarClock size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase text-fuchsia-600 dark:text-fuchsia-400">Proposal</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${config.bgColor} ${config.color}`}>{proposal.category}</span>
+                          </div>
+                          <h4 className="font-semibold text-slate-800 dark:text-white text-sm mt-1">{proposal.title}</h4>
+                          {proposal.description && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{proposal.description}</p>
+                          )}
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                              <Clock size={12} />
+                              {proposal.time}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <img src={proposal.userAvatar} alt={proposal.userName} className="w-4 h-4 rounded-full" />
+                              <span className="text-xs text-slate-500 dark:text-slate-400">{proposal.userName}</span>
+                            </div>
+                          </div>
+                          {proposal.responses.length > 0 && (
+                            <div className="flex items-center gap-1 mt-2">
+                              <span className="text-[10px] text-green-600">{proposal.responses.filter(r => r.response === 'ok').length} OK</span>
+                              <span className="text-[10px] text-red-600">{proposal.responses.filter(r => r.response === 'no_puedo').length} No</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              {/* Regular Items */}
               {selectedItems
                 .sort((a, b) => a.time.localeCompare(b.time))
                 .map(item => {
@@ -234,6 +305,12 @@ export const Calendario: React.FC<CalendarioProps> = ({ items }) => {
       {/* Legend */}
       <div className="mt-8 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
         <div className="flex flex-wrap items-center gap-6 justify-center">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-fuchsia-100 dark:bg-fuchsia-900/30 rounded-lg text-fuchsia-600">
+              <CalendarClock size={14} />
+            </div>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Proposal</span>
+          </div>
           {Object.entries(TYPE_CONFIG).map(([type, config]) => {
             const Icon = config.icon;
             return (

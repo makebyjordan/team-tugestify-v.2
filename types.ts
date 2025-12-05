@@ -109,3 +109,30 @@ export interface AgendaItem {
   userAvatar: string;
   createdAt: string;
 }
+
+export type ProposalCategory = 'importante' | 'diseño' | 'desarrollo' | 'ventas' | 'cliente' | 'equipo' | 'alguien' | 'otros';
+export type ProposalResponseType = 'ok' | 'no_puedo' | 'hablame_privado' | 'decirme_despues';
+
+export interface ProposalResponse {
+  id: string;
+  proposalId: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  response: ProposalResponseType;
+  createdAt?: string;
+}
+
+export interface Proposal {
+  id: string;
+  title: string;
+  description?: string;
+  category: ProposalCategory;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  responses: ProposalResponse[];
+  createdAt?: string;
+}

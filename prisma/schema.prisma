@@ -77,3 +77,57 @@ model ChatMessage {
   context   Json?    // Storing context as JSON
   createdAt DateTime @default(now())
 }
+
+model Proposal {
+  id          String             @id @default(uuid())
+  title       String
+  description String?
+  category    String             // importante, diseño, desarrollo, ventas, cliente, equipo, alguien, otros
+  date        String             // YYYY-MM-DD
+  time        String             // HH:MM
+  userId      String
+  userName    String
+  userAvatar  String
+  responses   ProposalResponse[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model ProposalResponse {
+  id         String   @id @default(uuid())
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  userId     String
+  userName   String
+  userAvatar String
+  response   String   // ok, no_puedo, hablame_privado, decirme_despues
+  createdAt  DateTime @default(now())
+}
+
+model NoteCheck {
+  id          String   @id @default(uuid())
+  type        String   // 'note' | 'checklist'
+  title       String
+  content     String?  // Para notas
+  items       Json?    // Para checklists [{id, text, completed}]
+  userId      String
+  userName    String
+  userAvatar  String
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AgendaItem {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  type        String   // llamar, hacer, equipo, proponer, reunion, otro
+  date        String   // YYYY-MM-DD
+  time        String   // HH:MM
+  userId      String
+  userName    String
+  userAvatar  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

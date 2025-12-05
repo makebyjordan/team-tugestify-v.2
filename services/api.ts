@@ -1,4 +1,4 @@
-import { Asset, Project, TeamMember, BrandItem, ActivityLog, ChatMessage } from '../types';
+import { Asset, Project, TeamMember, BrandItem, ActivityLog, ChatMessage, Proposal, ProposalResponse, NoteCheck, AgendaItem } from '../types';
 
 const API_URL = 'http://localhost:3001/api';
 
@@ -125,5 +125,80 @@ export const api = {
             body: JSON.stringify(message),
         });
         return res.json();
+    },
+
+    // Proposals
+    getProposals: async (): Promise<Proposal[]> => {
+        const res = await fetch(`${API_URL}/proposals`);
+        return res.json();
+    },
+    createProposal: async (proposal: Omit<Proposal, 'id' | 'responses'>): Promise<Proposal> => {
+        const res = await fetch(`${API_URL}/proposals`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(proposal),
+        });
+        return res.json();
+    },
+    deleteProposal: async (id: string): Promise<void> => {
+        await fetch(`${API_URL}/proposals/${id}`, { method: 'DELETE' });
+    },
+    respondToProposal: async (proposalId: string, response: Omit<ProposalResponse, 'id' | 'proposalId'>): Promise<ProposalResponse> => {
+        const res = await fetch(`${API_URL}/proposals/${proposalId}/responses`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(response),
+        });
+        return res.json();
+    },
+
+    // Notes & Checks
+    getNotesChecks: async (): Promise<NoteCheck[]> => {
+        const res = await fetch(`${API_URL}/notes-checks`);
+        return res.json();
+    },
+    createNoteCheck: async (note: NoteCheck): Promise<NoteCheck> => {
+        const res = await fetch(`${API_URL}/notes-checks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(note),
+        });
+        return res.json();
+    },
+    updateNoteCheck: async (note: NoteCheck): Promise<NoteCheck> => {
+        const res = await fetch(`${API_URL}/notes-checks/${note.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(note),
+        });
+        return res.json();
+    },
+    deleteNoteCheck: async (id: string): Promise<void> => {
+        await fetch(`${API_URL}/notes-checks/${id}`, { method: 'DELETE' });
+    },
+
+    // Agenda Items
+    getAgendaItems: async (): Promise<AgendaItem[]> => {
+        const res = await fetch(`${API_URL}/agenda-items`);
+        return res.json();
+    },
+    createAgendaItem: async (item: AgendaItem): Promise<AgendaItem> => {
+        const res = await fetch(`${API_URL}/agenda-items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item),
+        });
+        return res.json();
+    },
+    updateAgendaItem: async (item: AgendaItem): Promise<AgendaItem> => {
+        const res = await fetch(`${API_URL}/agenda-items/${item.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item),
+        });
+        return res.json();
+    },
+    deleteAgendaItem: async (id: string): Promise<void> => {
+        await fetch(`${API_URL}/agenda-items/${id}`, { method: 'DELETE' });
     },
 };
